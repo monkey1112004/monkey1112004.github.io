@@ -3,48 +3,83 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Trang web của Monkey</title>
-    <style>
-        * { margin: 0; padding: 0; box-sizing: border-box; }
-        body {
-            font-family: 'Segoe UI', Arial, sans-serif;
-            min-height: 100vh;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            padding: 20px;
-        }
-        .card {
-            background: white;
-            padding: 50px 40px;
-            border-radius: 20px;
-            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
-            max-width: 500px;
-            text-align: center;
-        }
-        h1 { color: #333; margin-bottom: 15px; font-size: 2em; }
-        p { color: #666; line-height: 1.6; margin-bottom: 10px; }
-        .avatar {
-            width: 100px; height: 100px;
-            border-radius: 50%;
-            background: linear-gradient(135deg, #667eea, #764ba2);
-            margin: 0 auto 20px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            color: white;
-            font-size: 40px;
-            font-weight: bold;
-        }
-    </style>
+    <title>Monkey's Security Blog</title>
+    <meta name="description" content="Chia sẻ kiến thức an toàn thông tin và write-up CTF">
+    <link rel="stylesheet" href="css/style.css">
 </head>
 <body>
-    <div class="card">
-        <div class="avatar">M</div>
-        <h1>👋 Xin chào!</h1>
-        <p>Tôi là <strong>Monkey</strong></p>
-        <p>Chào mừng bạn đến với trang web cá nhân của tôi!</p>
-    </div>
+    <!-- HEADER -->
+    <header>
+        <nav>
+            <a href="index.html" class="logo">🐒 Monkey Sec</a>
+            <ul>
+                <li><a href="index.html">Trang chủ</a></li>
+                <li><a href="writeups.html">Write-ups</a></li>
+                <li><a href="blog.html">Blog</a></li>
+                <li><a href="about.html">Giới thiệu</a></li>
+            </ul>
+        </nav>
+    </header>
+
+    <!-- HERO -->
+    <section class="hero">
+        <h1>Chào mừng đến với <span>Monkey Sec</span></h1>
+        <p>Nơi mình chia sẻ kiến thức về <strong>An toàn thông tin</strong>, <strong>CTF Write-ups</strong> và những gì mình học được trên hành trình trở thành Pentester.</p>
+        <div class="hero-buttons">
+            <a href="writeups.html" class="btn btn-primary">📝 Xem Write-ups</a>
+            <a href="about.html" class="btn btn-secondary">👤 Về mình</a>
+        </div>
+    </section>
+
+    <!-- BÀI VIẾT MỚI NHẤT -->
+    <section class="posts">
+        <h2>📌 Bài viết mới nhất</h2>
+        <div class="post-grid">
+            <!-- Bài 1 -->
+            <article class="post-card">
+                <div class="post-tag">Web Exploitation</div>
+                <h3><a href="posts/sample-post.html">SQL Injection từ cơ bản đến nâng cao</a></h3>
+                <p>Tổng hợp các kỹ thuật SQLi thường gặp trong CTF và cách phòng chống...</p>
+                <div class="post-meta">
+                    <span>📅 06/10/2026</span>
+                    <span>⏱️ 10 phút đọc</span>
+                </div>
+            </article>
+
+            <!-- Bài 2 -->
+            <article class="post-card">
+                <div class="post-tag">HTB</div>
+                <h3><a href="posts/sample-post.html">HackTheBox - Machine "Blue" Write-up</a></h3>
+                <p>Khai thác lỗ hổng EternalBlue (MS17-010) để chiếm quyền SYSTEM...</p>
+                <div class="post-meta">
+                    <span>📅 05/10/2026</span>
+                    <span>⏱️ 15 phút đọc</span>
+                </div>
+            </article>
+
+            <!-- Bài 3 -->
+            <article class="post-card">
+                <div class="post-tag">Cryptography</div>
+                <h3><a href="posts/sample-post.html">RSA trong CTF - Những lỗi thường gặp</a></h3>
+                <p>Các dạng bài RSA yếu khóa, common modulus, low exponent...</p>
+                <div class="post-meta">
+                    <span>📅 04/10/2026</span>
+                    <span>⏱️ 8 phút đọc</span>
+                </div>
+            </article>
+        </div>
+    </section>
+
+    <!-- FOOTER -->
+    <footer>
+        <p>© 2026 Monkey Sec · Made with ❤️ on GitHub Pages</p>
+        <div class="social">
+            <a href="https://github.com/monkey1112004">GitHub</a>
+            <a href="#">Email</a>
+            <a href="#">Facebook</a>
+        </div>
+    </footer>
+
+    <script src="js/main.js"></script>
 </body>
 </html>
