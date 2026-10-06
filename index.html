@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Monkey's Security Blog</title>
+    <title>Monkey Sec — An toàn thông tin & CTF Write-ups</title>
     <meta name="description" content="Chia sẻ kiến thức an toàn thông tin và write-up CTF">
     <link rel="stylesheet" href="css/style.css">
 </head>
@@ -13,7 +13,7 @@
         <nav>
             <a href="index.html" class="logo">🐒 Monkey Sec</a>
             <ul>
-                <li><a href="index.html">Trang chủ</a></li>
+                <li><a href="index.html" class="active">Trang chủ</a></li>
                 <li><a href="writeups.html">Write-ups</a></li>
                 <li><a href="blog.html">Blog</a></li>
                 <li><a href="about.html">Giới thiệu</a></li>
@@ -21,52 +21,47 @@
         </nav>
     </header>
 
-    <!-- HERO -->
+    <!-- HERO / GIỚI THIỆU -->
     <section class="hero">
+        <div class="hero-badge">🔐 Security Research</div>
         <h1>Chào mừng đến với <span>Monkey Sec</span></h1>
-        <p>Nơi mình chia sẻ kiến thức về <strong>An toàn thông tin</strong>, <strong>CTF Write-ups</strong> và những gì mình học được trên hành trình trở thành Pentester.</p>
-        <div class="hero-buttons">
-            <a href="writeups.html" class="btn btn-primary">📝 Xem Write-ups</a>
-            <a href="about.html" class="btn btn-secondary">👤 Về mình</a>
-        </div>
+        <p>
+            Đây là nơi mình lưu lại hành trình học <strong>An toàn thông tin</strong>,
+            chia sẻ các <strong>write-up CTF</strong>, và ghi chép những kiến thức
+            mình tích lũy được trên con đường trở thành Pentester.
+        </p>
+        <p class="hero-sub">
+            Mọi nội dung đều hướng tới mục đích <strong>học tập và nghiên cứu</strong> —
+            không khuyến khích sử dụng cho mục đích xấu.
+        </p>
     </section>
 
-    <!-- BÀI VIẾT MỚI NHẤT -->
-    <section class="posts">
-        <h2>📌 Bài viết mới nhất</h2>
-        <div class="post-grid">
-            <!-- Bài 1 -->
-            <article class="post-card">
-                <div class="post-tag">Web Exploitation</div>
-                <h3><a href="posts/sample-post.html">SQL Injection từ cơ bản đến nâng cao</a></h3>
-                <p>Tổng hợp các kỹ thuật SQLi thường gặp trong CTF và cách phòng chống...</p>
-                <div class="post-meta">
-                    <span>📅 06/10/2026</span>
-                    <span>⏱️ 10 phút đọc</span>
-                </div>
-            </article>
+    <!-- 3 CARD DẪN ĐẾN CÁC TRANG CON -->
+    <section class="sections">
+        <div class="section-grid">
+            <!-- Card 1: Write-ups -->
+            <a href="writeups.html" class="section-card">
+                <div class="section-icon">📝</div>
+                <h2>Write-ups</h2>
+                <p>Tổng hợp write-up các máy HackTheBox, TryHackMe, VulnHub và các giải CTF mình đã tham gia.</p>
+                <span class="section-link">Khám phá →</span>
+            </a>
 
-            <!-- Bài 2 -->
-            <article class="post-card">
-                <div class="post-tag">HTB</div>
-                <h3><a href="posts/sample-post.html">HackTheBox - Machine "Blue" Write-up</a></h3>
-                <p>Khai thác lỗ hổng EternalBlue (MS17-010) để chiếm quyền SYSTEM...</p>
-                <div class="post-meta">
-                    <span>📅 05/10/2026</span>
-                    <span>⏱️ 15 phút đọc</span>
-                </div>
-            </article>
+            <!-- Card 2: Blog -->
+            <a href="blog.html" class="section-card">
+                <div class="section-icon">📚</div>
+                <h2>Blog</h2>
+                <p>Kiến thức nền tảng và nâng cao về Web Security, Cryptography, Pwn, Forensics, Network...</p>
+                <span class="section-link">Đọc blog →</span>
+            </a>
 
-            <!-- Bài 3 -->
-            <article class="post-card">
-                <div class="post-tag">Cryptography</div>
-                <h3><a href="posts/sample-post.html">RSA trong CTF - Những lỗi thường gặp</a></h3>
-                <p>Các dạng bài RSA yếu khóa, common modulus, low exponent...</p>
-                <div class="post-meta">
-                    <span>📅 04/10/2026</span>
-                    <span>⏱️ 8 phút đọc</span>
-                </div>
-            </article>
+            <!-- Card 3: About -->
+            <a href="about.html" class="section-card">
+                <div class="section-icon">👤</div>
+                <h2>Giới thiệu</h2>
+                <p>Đôi nét về bản thân mình, hành trình học tập và lý do mình yêu thích lĩnh vực an toàn thông tin.</p>
+                <span class="section-link">Về mình →</span>
+            </a>
         </div>
     </section>
 
@@ -76,10 +71,18 @@
         <div class="social">
             <a href="https://github.com/monkey1112004">GitHub</a>
             <a href="#">Email</a>
-            <a href="#">Facebook</a>
         </div>
     </footer>
 
     <script src="js/main.js"></script>
 </body>
 </html>
+
+
+
+
+
+
+
+
+
